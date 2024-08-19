@@ -47,6 +47,12 @@ func main() {
 	set.Delete(2)
 
 	fmt.Println("Set has 2:", set.Has(2)) // Output: Set has 2: false
+
+	// go1.23
+	fmt.Println("Set contents:")
+	for key := range set.Iterator() {
+		fmt.Println(key)
+	}
 }
 ```
 
