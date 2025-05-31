@@ -72,6 +72,21 @@ func (s *Set[T]) ForEach(fn func(key T) bool) {
 	s.mu.RUnlock()
 }
 
+func (s *Set[T]) ForEachSnapshot(fn func(key T) bool) {
+	s.mu.RLock()
+	snapshot := make([]T, 0, len(s.m))
+	for key := range s.m {
+		snapshot = append(snapshot, key)
+	}
+	s.mu.RUnlock()
+
+	for _, key := range snapshot {
+		if !fn(key) {
+			break
+		}
+	}
+}
+
 // Returns a slice of all keys in the set.
 func (s *Set[T]) Keys() []T {
 	s.mu.RLock()

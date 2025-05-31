@@ -100,3 +100,20 @@ func (s *Map[K, T]) ForEach(fn func(key K, value T) bool) {
 	}
 	s.mu.RUnlock()
 }
+
+func (s *Map[K, T]) ForEachSnapshot(fn func(key K, value T) bool) {
+	// Take a snapshot under read lock
+	s.mu.RLock()
+	snapshot := make([]Tuple[K, T], 0, len(s.m))
+	for k, v := range s.m {
+		snapshot = append(snapshot, Tuple[K, T]{key: k, val: v})
+	}
+	s.mu.RUnlock()
+
+	// Iterate snapshot outside the lock
+	for _, e := range snapshot {
+		if !fn(e.key, e.val) {
+			break
+		}
+	}
+}
