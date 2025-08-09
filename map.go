@@ -33,15 +33,16 @@ func (s *Map[K, T]) Set(key K, value T) {
 	s.mu.Unlock()
 }
 
-func (s *Map[K, T]) GetOrSet(key K, value T) (actual T, loaded bool) {
+func (s *Map[K, T]) GetOrSet(key K, valueFn func() T) (actual T, loaded bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	val, ok := s.m[key]
 	if ok {
-		return val, false
+		return val, true // Value was loaded
 	}
+	value := valueFn()
 	s.m[key] = value
-	return value, true
+	return value, false // Value was set
 }
 
 func (s *Map[K, T]) Clear() {

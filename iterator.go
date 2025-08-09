@@ -58,7 +58,7 @@ func (s *Set[T]) Iterator() iter.Seq[T] {
 	}
 }
 
-func (s *Set[T]) IteratorSnapshot() iter.Seq[T] {
+func (s *Set[T]) SnapshotIterator() iter.Seq[T] {
 	s.mu.RLock()
 	// Take snapshot of keys
 	snapshot := make([]T, 0, len(s.m))
