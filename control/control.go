@@ -64,3 +64,17 @@ func Interval(ctx context.Context, interval time.Duration, f func()) {
 		}
 	}()
 }
+
+// OnceValue returns a function that returns the value of `fn` on the first call,
+// and caches the value for all subsequent calls.
+func OnceValue[T any](fn func() T) func() T {
+	var once sync.Once
+	var value T
+
+	return func() T {
+		once.Do(func() {
+			value = fn()
+		})
+		return value
+	}
+}
