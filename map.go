@@ -57,6 +57,15 @@ func (s *Map[K, T]) Delete(key K) {
 	s.mu.Unlock()
 }
 
+func (s *Map[K, T]) DeleteIf(key K, condition func(T) bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if v, exists := s.m[key]; exists && condition(v) {
+		delete(s.m, key)
+	}
+}
+
 func (s *Map[K, T]) Pop(key K) (T, bool) {
 	s.mu.Lock()
 	v, ok := s.m[key]
@@ -65,6 +74,19 @@ func (s *Map[K, T]) Pop(key K) (T, bool) {
 	}
 	s.mu.Unlock()
 	return v, ok
+}
+
+func (s *Map[K, T]) PopIf(key K, condition func(T) bool) (T, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if v, exists := s.m[key]; exists && condition(v) {
+		delete(s.m, key)
+		return v, true
+	}
+
+	var zero T
+	return zero, false
 }
 
 func (s *Map[K, T]) ChangeKey(key, new_key K) (T, bool) {
