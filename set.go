@@ -50,6 +50,17 @@ func (s *Set[T]) Delete(key T) {
 	s.mu.Unlock()
 }
 
+// DeleteIf deletes the given key from the set, but only if the key exists
+// and satisfies the provided condition. The operation is atomic.
+func (s *Set[T]) DeleteIf(key T, condition func(key T) bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.m[key]; exists && condition(key) {
+		delete(s.m, key)
+	}
+}
+
 // Removes a key from the set and returns `true` if the key existed.
 func (s *Set[T]) Pop(key T) bool {
 	s.mu.Lock()
@@ -59,6 +70,19 @@ func (s *Set[T]) Pop(key T) bool {
 	}
 	s.mu.Unlock()
 	return ok
+}
+
+// PopIf removes a key from the set, but only if it exists and satisfies
+// the condition. It returns true if the key was actually removed.
+func (s *Set[T]) PopIf(key T, condition func(key T) bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.m[key]; exists && condition(key) {
+		delete(s.m, key)
+		return true
+	}
+	return false
 }
 
 // Iterates over all keys in the set, applying the provided function.

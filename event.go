@@ -18,9 +18,8 @@ https://gist.github.com/mkeeler/cb88cc762ca36733db0798ca80f1e73e
 
 // Event struct containing a state and a pointer to a channel
 type Event struct {
-	state       uint32
-	readerCount int32
-	channel     unsafe.Pointer
+	state   uint32
+	channel unsafe.Pointer
 }
 
 // NewEvent initializes and returns a new Event instance
@@ -40,7 +39,6 @@ func (e *Event) broadcast() {
 
 // notifyChan returns a read-only channel for notification
 func (e *Event) notifyChan() <-chan struct{} {
-	atomic.AddInt32(&e.readerCount, 1)
 	chPtr := atomic.LoadPointer(&e.channel)
 	return *(*chan struct{})(chPtr)
 }
@@ -52,8 +50,7 @@ func (e *Event) IsSet() bool {
 
 // Set the event and broadcast if it's newly set
 func (e *Event) Set() {
-	if atomic.CompareAndSwapUint32(&e.state, 0, 1) &&
-		atomic.LoadInt32(&e.readerCount) > 0 {
+	if atomic.CompareAndSwapUint32(&e.state, 0, 1) {
 		e.broadcast()
 	}
 }
@@ -66,12 +63,11 @@ func (e *Event) Clear() {
 // Wait until the event is set
 func (e *Event) Wait() {
 	for {
-		if atomic.LoadUint32(&e.state) == 1 {
+		if e.IsSet() {
 			return
 		}
 
 		<-e.notifyChan()
-		atomic.AddInt32(&e.readerCount, -1)
 	}
 
 }
@@ -80,23 +76,24 @@ func (e *Event) Wait() {
 
 // WaitTimeout waits for the event to be set until the timeout
 func (e *Event) WaitTimeout(timeout time.Duration) bool {
-	isTimeout := false
+	if e.IsSet() { // Fast path
+		return true
+	}
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
 	for {
-		if atomic.LoadUint32(&e.state) == 1 {
-			return true
-		}
-		if isTimeout {
-			return false
-		}
+		ch := e.notifyChan()
 
 		select {
-		case <-time.After(timeout):
-			isTimeout = true
-		case <-e.notifyChan():
-
+		case <-timer.C:
+			return false
+		case <-ch:
+			if e.IsSet() {
+				return true
+			}
+			// Spurious wakeup, continue loop
 		}
-
-		atomic.AddInt32(&e.readerCount, -1)
 	}
 }

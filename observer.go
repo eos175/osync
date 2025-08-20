@@ -1,7 +1,7 @@
 package osync
 
 import (
-	"context"
+	"slices"
 	"sync"
 )
 
@@ -26,42 +26,12 @@ func (o *Observable[T]) Get() T {
 	return o.value
 }
 
-// Set updates the value of the observable and notifies all observers.
+// Set updates the value of the observable and notifies all observers atomically.
 func (o *Observable[T]) Set(value T) {
 	o.mu.Lock()
+	defer o.mu.Unlock()
+
 	o.value = value
-	o.mu.Unlock()
-	o.notifyObservers(value)
-}
-
-// Subscribe allows an observer to receive notifications when the value changes.
-func (o *Observable[T]) Subscribe(ctx context.Context) <-chan T {
-	ch := make(chan T, 1) // Buffered channel to avoid blocking.
-
-	o.mu.Lock()
-	o.observers = append(o.observers, ch)
-	o.mu.Unlock()
-
-	go func() {
-		<-ctx.Done()
-		o.removeObserver(ch)
-		close(ch)
-	}()
-
-	return ch
-}
-
-// Len returns the number of observers currently subscribed.
-func (o *Observable[T]) Len() int {
-	o.mu.RLock()
-	defer o.mu.RUnlock()
-	return len(o.observers)
-}
-
-// notifyObservers sends the new value to all observers without blocking.
-func (o *Observable[T]) notifyObservers(value T) {
-	o.mu.RLock()
-	defer o.mu.RUnlock()
 
 	for _, observer := range o.observers {
 		select {
@@ -72,17 +42,61 @@ func (o *Observable[T]) notifyObservers(value T) {
 	}
 }
 
-// removeObserver removes a channel from the list of observers by replacing it with the last channel.
-func (o *Observable[T]) removeObserver(observer chan T) {
+// Subscribe allows an observer to receive notifications.
+// It returns a channel for receiving values and an unsubscribe function
+// that must be called to clean up the subscription.
+// The current value is sent to the subscriber upon subscription.
+func (o *Observable[T]) Subscribe() (<-chan T, func()) {
+	ch := make(chan T, 1)
+
+	o.mu.Lock()
+	o.observers = append(o.observers, ch)
+	// Send initial value while holding the lock to ensure atomicity.
+	// This is safe and won't deadlock because the channel is buffered and new.
+	ch <- o.value
+	o.mu.Unlock()
+
+	unsubscribe := func() {
+		// If we successfully remove the channel, we are responsible for closing it.
+		if o.removeObserver(ch) {
+			close(ch)
+		}
+	}
+	return ch, unsubscribe
+}
+
+// Len returns the number of observers currently subscribed.
+func (o *Observable[T]) Len() int {
+	o.mu.RLock()
+	defer o.mu.RUnlock()
+	return len(o.observers)
+}
+
+// Close terminates all subscriptions and cleans up the observable's resources.
+func (o *Observable[T]) Close() {
+	o.mu.Lock()
+	// Atomically claim all remaining observers.
+	observersToClose := o.observers
+	o.observers = nil
+	o.mu.Unlock()
+
+	// And close them.
+	for _, ch := range observersToClose {
+		close(ch)
+	}
+}
+
+// removeObserver removes a channel from the list and returns true if it was found.
+// This atomicity is key to deciding which routine is responsible for closing the channel.
+func (o *Observable[T]) removeObserver(observer chan T) bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	for i, obs := range o.observers {
-		if obs == observer {
-			// Replace the removed channel with the last channel in the list.
-			o.observers[i] = o.observers[len(o.observers)-1]
-			o.observers = o.observers[:len(o.observers)-1]
-			break
-		}
+	if index := slices.Index(o.observers, observer); index != -1 {
+		// Replace the removed channel with the last channel in the list.
+		o.observers[index] = o.observers[len(o.observers)-1]
+		o.observers = o.observers[:len(o.observers)-1]
+		return true // Success
 	}
+	return false // Not found
 }

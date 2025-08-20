@@ -64,7 +64,6 @@ Here's an example of how to use the `Observable` provided by `osync`:
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -73,25 +72,36 @@ import (
 
 func main() {
 	obs := osync.NewObservable[int](0)
+	defer obs.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Subscribe to changes. This returns a channel and an unsubscribe function.
+	ch, unsubscribe := obs.Subscribe()
+	// It's important to call unsubscribe when done to avoid leaks.
+	defer unsubscribe()
 
-	// Subscribe to changes
-	ch := obs.Subscribe(ctx)
-
+	// This goroutine will stop the subscription after 5 seconds.
 	go func() {
-		// Update the observable value
-		for i := 0; i < 10; i++ {
-			obs.Set(i*i)
+		time.Sleep(5 * time.Second)
+		fmt.Println("Unsubscribing...")
+		unsubscribe()
+	}()
+
+	// This goroutine updates the observable value.
+	go func() {
+		for i := 1; ; i++ {
+			// This Set will be missed if it happens after unsubscribe.
+			obs.Set(i * i)
 			time.Sleep(1 * time.Second)
 		}
 	}()
 
-	// Print updates received from the observable
+	// Print updates received from the observable.
+	// The loop will end when the channel is closed by the unsubscribe call.
 	for value := range ch {
 		fmt.Println("Received value:", value)
 	}
+
+	fmt.Println("Subscription ended.")
 }
 ```
 

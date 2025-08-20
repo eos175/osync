@@ -49,10 +49,15 @@ func NewThrottle(interval time.Duration) func(f func()) bool {
 }
 
 // Interval calls `f` at regular `interval` until the `ctx` is cancelled.
-func Interval(ctx context.Context, interval time.Duration, f func()) {
+// If `immediate` is true, `f` is called once at the beginning without waiting for the first tick.
+func Interval(ctx context.Context, interval time.Duration, f func(), immediate ...bool) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
+
+		if len(immediate) > 0 && immediate[0] {
+			f()
+		}
 
 		for {
 			select {
