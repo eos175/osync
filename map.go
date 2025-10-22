@@ -51,6 +51,17 @@ func (s *Map[K, T]) Clear() {
 	s.mu.Unlock()
 }
 
+func (s *Map[K, T]) UpdateIf(key K, condition func(T) bool, updateFn func(T) T) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if v, exists := s.m[key]; exists && condition(v) {
+		s.m[key] = updateFn(v)
+		return true
+	}
+	return false
+}
+
 func (s *Map[K, T]) Delete(key K) {
 	s.mu.Lock()
 	delete(s.m, key)
