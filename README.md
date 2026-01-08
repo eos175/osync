@@ -18,7 +18,6 @@ To install `osync`, use `go get`:
 go get github.com/eos175/osync
 ```
 
-
 ## Usage
 
 ### Set Example
@@ -190,7 +189,7 @@ func main() {
 
 	// First call runs immediately
 	throttle(func() { fmt.Println("Run 1") })
-	
+
 	// This call is skipped because it's too soon
 	throttle(func() { fmt.Println("Run 2") })
 
@@ -220,7 +219,7 @@ func main() {
 
 	// Calculate the next occurrence of 03:00:00 AM (local time)
 	start := control.NextDailyAt(time.Now(), 3, 0, 0)
-	
+
 	// To use a specific timezone (e.g., UTC):
 	// start := control.NextDailyAt(time.Now().In(time.UTC), 3, 0, 0)
 
@@ -259,13 +258,10 @@ func main() {
 }
 ```
 
-
 ## Documentation
 
 The full documentation is available on [pkg.go.dev](https://pkg.go.dev/github.com/eos175/osync).
 
-
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
