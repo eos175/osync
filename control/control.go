@@ -2,6 +2,7 @@ package control
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -22,7 +23,14 @@ func NewDebouncer(after time.Duration) func(f func()) {
 				<-timer.C // Ensure the channel is drained
 			}
 		}
-		timer = time.AfterFunc(after, f)
+		timer = time.AfterFunc(after, func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("recovered from panic in NewDebouncer: %v\n", r)
+				}
+			}()
+			f()
+		})
 	}
 }
 
@@ -33,13 +41,19 @@ func NewThrottle(interval time.Duration) func(f func()) bool {
 		lastRun time.Time
 	)
 
-	return func(f func()) bool {
+	return func(f func()) (executed bool) {
 		mu.Lock()
 		defer mu.Unlock()
 
 		now := time.Now()
 		if now.Sub(lastRun) >= interval {
 			lastRun = now
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("recovered from panic in NewThrottle: %v\n", r)
+					executed = true
+				}
+			}()
 			f()
 			return true
 		}
@@ -52,11 +66,20 @@ func NewThrottle(interval time.Duration) func(f func()) bool {
 // If `immediate` is true, `f` is called once at the beginning without waiting for the first tick.
 func Interval(ctx context.Context, interval time.Duration, f func(), immediate ...bool) {
 	go func() {
+		safeF := func() {
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("recovered from panic in Interval: %v\n", r)
+				}
+			}()
+			f()
+		}
+
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
 		if len(immediate) > 0 && immediate[0] {
-			f()
+			safeF()
 		}
 
 		for {
@@ -64,7 +87,7 @@ func Interval(ctx context.Context, interval time.Duration, f func(), immediate .
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				f()
+				safeF()
 			}
 		}
 	}()
