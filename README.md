@@ -141,6 +141,124 @@ func main() {
 }
 ```
 
+### Control Utilities
+
+The `control` package provides utilities for controlling function execution flow.
+
+#### Debouncer
+
+Executes a function only after a specified duration has passed without new calls.
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/eos175/osync/control"
+)
+
+func main() {
+	debouncer := control.NewDebouncer(100 * time.Millisecond)
+
+	// Will execute only the last call after 100ms
+	debouncer(func() { fmt.Println("1") })
+	debouncer(func() { fmt.Println("2") })
+	debouncer(func() { fmt.Println("3") }) // Only this one runs
+
+	time.Sleep(200 * time.Millisecond)
+}
+```
+
+#### Throttle
+
+Ensures a function is not executed more frequently than a specified interval.
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/eos175/osync/control"
+)
+
+func main() {
+	throttle := control.NewThrottle(100 * time.Millisecond)
+
+	// First call runs immediately
+	throttle(func() { fmt.Println("Run 1") })
+	
+	// This call is skipped because it's too soon
+	throttle(func() { fmt.Println("Run 2") })
+
+	time.Sleep(150 * time.Millisecond)
+	// This call runs
+	throttle(func() { fmt.Println("Run 3") })
+}
+```
+
+#### Scheduled Periodic Tasks
+
+To schedule a task to run periodically starting at a specific time (e.g., daily backups), you can combine `NextDailyAt` with `IntervalAt`.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/eos175/osync/control"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Calculate the next occurrence of 03:00:00 AM (local time)
+	start := control.NextDailyAt(time.Now(), 3, 0, 0)
+	
+	// To use a specific timezone (e.g., UTC):
+	// start := control.NextDailyAt(time.Now().In(time.UTC), 3, 0, 0)
+
+	// Schedule the task to run daily starting at 'start'
+	control.IntervalAt(ctx, start, 24*time.Hour, func() {
+		fmt.Println("Starting daily backup...")
+	})
+
+	// Block main process
+	select {}
+}
+```
+
+#### IntervalAt
+
+Execute a task at a regular interval, starting at a specific future time.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/eos175/osync/control"
+)
+
+func main() {
+	ctx := context.Background()
+	start := time.Now().Add(1 * time.Hour) // Start in 1 hour
+
+	control.IntervalAt(ctx, start, 30*time.Minute, func() {
+		fmt.Println("Running task...")
+	})
+}
+```
+
 
 ## Documentation
 

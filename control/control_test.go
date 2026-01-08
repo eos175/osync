@@ -80,3 +80,49 @@ func TestThrottlePanicRecovery(t *testing.T) {
 		t.Error("expected throttled function to be executed")
 	}
 }
+
+func TestIntervalAt(t *testing.T) {
+	var mu sync.Mutex
+	executionTimes := []time.Time{}
+
+	f := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		executionTimes = append(executionTimes, time.Now())
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start 100ms in the future
+	startDelay := 100 * time.Millisecond
+	interval := 50 * time.Millisecond
+	startTime := time.Now().Add(startDelay)
+
+	IntervalAt(ctx, startTime, interval, f)
+
+	// Wait enough time for: initial delay (100) + one interval (50) + buffer
+	time.Sleep(200 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(executionTimes) < 2 {
+		t.Fatalf("expected at least 2 executions, got %d", len(executionTimes))
+	}
+
+	// Verify first execution was close to startTime
+	firstExec := executionTimes[0]
+	diff := firstExec.Sub(startTime)
+	if diff < -20*time.Millisecond || diff > 20*time.Millisecond {
+		t.Errorf("first execution time off. Expected around %v, got %v (diff: %v)", startTime, firstExec, diff)
+	}
+
+	// Verify second execution was interval later
+	secondExec := executionTimes[1]
+	expectedSecond := firstExec.Add(interval)
+	diff2 := secondExec.Sub(expectedSecond)
+	if diff2 < -20*time.Millisecond || diff2 > 20*time.Millisecond {
+		t.Errorf("second execution time off. Expected around %v, got %v (diff: %v)", expectedSecond, secondExec, diff2)
+	}
+}
