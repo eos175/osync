@@ -62,6 +62,7 @@ Here's an example of how to use the `Observable` provided by `osync`:
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -121,9 +122,14 @@ func main() {
 	event := osync.NewEvent()
 
 	go func() {
-		// Wait for the event to be set
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
 		fmt.Println("Waiting for event to be set...")
-		event.Wait()
+		if err := event.WaitContext(ctx); err != nil {
+			fmt.Println("Wait canceled:", err)
+			return
+		}
 		fmt.Println("Event is set!")
 	}()
 

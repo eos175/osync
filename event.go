@@ -1,8 +1,8 @@
 package osync
 
 import (
+	"context"
 	"sync/atomic"
-	"time"
 	"unsafe"
 )
 
@@ -62,38 +62,23 @@ func (e *Event) Clear() {
 
 // Wait until the event is set
 func (e *Event) Wait() {
-	for {
-		if e.IsSet() {
-			return
-		}
-
-		<-e.notifyChan()
-	}
-
+	_ = e.WaitContext(context.Background())
 }
 
 // https://github.com/golang/go/issues/9578
 
-// WaitTimeout waits for the event to be set until the timeout
-func (e *Event) WaitTimeout(timeout time.Duration) bool {
-	if e.IsSet() { // Fast path
-		return true
-	}
-
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
+// WaitContext waits until the event is set or the context is canceled.
+func (e *Event) WaitContext(ctx context.Context) error {
 	for {
-		ch := e.notifyChan()
+		if e.IsSet() {
+			return nil
+		}
 
+		ch := e.notifyChan()
 		select {
-		case <-timer.C:
-			return false
+		case <-ctx.Done():
+			return ctx.Err()
 		case <-ch:
-			if e.IsSet() {
-				return true
-			}
-			// Spurious wakeup, continue loop
 		}
 	}
 }
