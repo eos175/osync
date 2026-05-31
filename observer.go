@@ -26,7 +26,9 @@ func (o *Observable[T]) Get() T {
 	return o.value
 }
 
-// Set updates the value of the observable and notifies all observers atomically.
+// Set updates the current value and notifies current observers.
+// Notification is best-effort: if a subscriber channel buffer is full, that
+// subscriber does not receive this update.
 func (o *Observable[T]) Set(value T) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -42,9 +44,8 @@ func (o *Observable[T]) Set(value T) {
 	}
 }
 
-// Subscribe allows an observer to receive notifications.
-// It returns a channel for receiving values and an unsubscribe function
-// that must be called to clean up the subscription.
+// Subscribe registers a new observer.
+// It returns a channel for updates and an unsubscribe function.
 // The current value is sent to the subscriber upon subscription.
 func (o *Observable[T]) Subscribe() (<-chan T, func()) {
 	ch := make(chan T, 1)
@@ -57,7 +58,7 @@ func (o *Observable[T]) Subscribe() (<-chan T, func()) {
 	o.mu.Unlock()
 
 	unsubscribe := func() {
-		// If we successfully remove the channel, we are responsible for closing it.
+		// If we successfully remove the channel, this call owns closing it.
 		if o.removeObserver(ch) {
 			close(ch)
 		}

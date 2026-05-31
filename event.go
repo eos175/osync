@@ -16,13 +16,20 @@ https://gist.github.com/mkeeler/cb88cc762ca36733db0798ca80f1e73e
 
 */
 
-// Event struct containing a state and a pointer to a channel
+// Event is a level-triggered synchronization primitive.
+//
+// Semantics are similar to asyncio.Event:
+//   - Set marks the event as set and wakes current waiters.
+//   - Clear marks the event as unset without waking waiters.
+//   - Wait/WaitContext return once the event is observed as set.
+//
+// The event remains set until Clear is called.
 type Event struct {
 	state   uint32
 	channel unsafe.Pointer
 }
 
-// NewEvent initializes and returns a new Event instance
+// NewEvent initializes and returns a new unset Event instance.
 func NewEvent() *Event {
 	ch := make(chan struct{})
 	return &Event{
@@ -43,31 +50,35 @@ func (e *Event) notifyChan() <-chan struct{} {
 	return *(*chan struct{})(chPtr)
 }
 
-// IsSet checks if the event is set
+// IsSet reports whether the event is currently set.
 func (e *Event) IsSet() bool {
 	return atomic.LoadUint32(&e.state) == 1
 }
 
-// Set the event and broadcast if it's newly set
+// Set marks the event as set.
+// If this call transitions the state from unset to set, current waiters are notified.
 func (e *Event) Set() {
 	if atomic.CompareAndSwapUint32(&e.state, 0, 1) {
 		e.broadcast()
 	}
 }
 
-// Clear the state of the event
+// Clear marks the event as unset.
+// It does not notify waiters.
 func (e *Event) Clear() {
 	atomic.StoreUint32(&e.state, 0)
 }
 
-// Wait until the event is set
+// Wait blocks until the event is set.
+// It is equivalent to WaitContext(context.Background()).
 func (e *Event) Wait() {
 	_ = e.WaitContext(context.Background())
 }
 
 // https://github.com/golang/go/issues/9578
 
-// WaitContext waits until the event is set or the context is canceled.
+// WaitContext blocks until the event is set or the context is canceled.
+// It returns nil if the event is observed as set, otherwise ctx.Err().
 func (e *Event) WaitContext(ctx context.Context) error {
 	for {
 		if e.IsSet() {

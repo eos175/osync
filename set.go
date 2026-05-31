@@ -14,6 +14,7 @@ type Set[T comparable] struct {
 	m  map[T]null
 }
 
+// NewSet creates an empty concurrent set.
 func NewSet[T comparable]() *Set[T] {
 	return &Set[T]{m: make(map[T]null, minSizeSet)}
 }
@@ -85,7 +86,9 @@ func (s *Set[T]) PopIf(key T, condition func(key T) bool) bool {
 	return false
 }
 
-// Iterates over all keys in the set, applying the provided function.
+// Range iterates over current keys while holding a read lock.
+// Iteration stops early when fn returns false.
+// Set iteration order is not deterministic.
 func (s *Set[T]) Range(fn func(key T) bool) {
 	s.mu.RLock()
 	for key := range s.m {
@@ -96,6 +99,9 @@ func (s *Set[T]) Range(fn func(key T) bool) {
 	s.mu.RUnlock()
 }
 
+// Snapshot returns a shallow snapshot of keys.
+// The returned slice can be iterated without holding locks.
+// Snapshot order is not deterministic.
 func (s *Set[T]) Snapshot() []T {
 	s.mu.RLock()
 	snapshot := make([]T, 0, len(s.m))
