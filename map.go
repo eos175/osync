@@ -157,11 +157,11 @@ func (s *Map[K, T]) Range(fn func(key K, value T) bool) {
 // Snapshot returns a shallow snapshot of entries as key/value tuples.
 // The returned slice can be iterated without holding locks.
 // Snapshot order is not deterministic.
-func (s *Map[K, T]) Snapshot() []Tuple[K, T] {
+func (s *Map[K, T]) snapshot() []tuple[K, T] {
 	s.mu.RLock()
-	snapshot := make([]Tuple[K, T], 0, len(s.m))
+	snapshot := make([]tuple[K, T], 0, len(s.m))
 	for k, v := range s.m {
-		snapshot = append(snapshot, Tuple[K, T]{Key: k, Value: v})
+		snapshot = append(snapshot, tuple[K, T]{key: k, value: v})
 	}
 	s.mu.RUnlock()
 	return snapshot

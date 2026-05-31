@@ -99,19 +99,6 @@ func (s *Set[T]) Range(fn func(key T) bool) {
 	s.mu.RUnlock()
 }
 
-// Snapshot returns a shallow snapshot of keys.
-// The returned slice can be iterated without holding locks.
-// Snapshot order is not deterministic.
-func (s *Set[T]) Snapshot() []T {
-	s.mu.RLock()
-	snapshot := make([]T, 0, len(s.m))
-	for key := range s.m {
-		snapshot = append(snapshot, key)
-	}
-	s.mu.RUnlock()
-	return snapshot
-}
-
 // Returns a slice of all keys in the set.
 func (s *Set[T]) Keys() []T {
 	s.mu.RLock()
