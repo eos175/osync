@@ -100,12 +100,12 @@ func (s *Map[K, T]) PopIf(key K, condition func(T) bool) (T, bool) {
 	return zero, false
 }
 
-func (s *Map[K, T]) ChangeKey(key, new_key K) (T, bool) {
+func (s *Map[K, T]) RenameKey(key, newKey K) (T, bool) {
 	s.mu.Lock()
 	v, ok := s.m[key]
 	if ok {
 		delete(s.m, key)
-		s.m[new_key] = v
+		s.m[newKey] = v
 	}
 	s.mu.Unlock()
 	return v, ok
@@ -125,7 +125,7 @@ func (s *Map[K, T]) Clone() *Map[K, T] {
 	return &Map[K, T]{m: m}
 }
 
-func (s *Map[K, T]) ForEach(fn func(key K, value T) bool) {
+func (s *Map[K, T]) Range(fn func(key K, value T) bool) {
 	s.mu.RLock()
 	for k, v := range s.m {
 		if !fn(k, v) {
@@ -135,19 +135,12 @@ func (s *Map[K, T]) ForEach(fn func(key K, value T) bool) {
 	s.mu.RUnlock()
 }
 
-func (s *Map[K, T]) ForEachSnapshot(fn func(key K, value T) bool) {
-	// Take a snapshot under read lock
+func (s *Map[K, T]) Snapshot() []Tuple[K, T] {
 	s.mu.RLock()
 	snapshot := make([]Tuple[K, T], 0, len(s.m))
 	for k, v := range s.m {
-		snapshot = append(snapshot, Tuple[K, T]{key: k, val: v})
+		snapshot = append(snapshot, Tuple[K, T]{Key: k, Value: v})
 	}
 	s.mu.RUnlock()
-
-	// Iterate snapshot outside the lock
-	for _, e := range snapshot {
-		if !fn(e.key, e.val) {
-			break
-		}
-	}
+	return snapshot
 }

@@ -47,9 +47,8 @@ func main() {
 
 	fmt.Println("Set has 2:", set.Has(2)) // Output: Set has 2: false
 
-	// go1.23
-	fmt.Println("Set contents:")
-	for key := range set.Iterator() {
+	fmt.Println("Set contents (snapshot):")
+	for _, key := range set.Snapshot() {
 		fmt.Println(key)
 	}
 }

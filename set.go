@@ -86,7 +86,7 @@ func (s *Set[T]) PopIf(key T, condition func(key T) bool) bool {
 }
 
 // Iterates over all keys in the set, applying the provided function.
-func (s *Set[T]) ForEach(fn func(key T) bool) {
+func (s *Set[T]) Range(fn func(key T) bool) {
 	s.mu.RLock()
 	for key := range s.m {
 		if !fn(key) {
@@ -96,19 +96,14 @@ func (s *Set[T]) ForEach(fn func(key T) bool) {
 	s.mu.RUnlock()
 }
 
-func (s *Set[T]) ForEachSnapshot(fn func(key T) bool) {
+func (s *Set[T]) Snapshot() []T {
 	s.mu.RLock()
 	snapshot := make([]T, 0, len(s.m))
 	for key := range s.m {
 		snapshot = append(snapshot, key)
 	}
 	s.mu.RUnlock()
-
-	for _, key := range snapshot {
-		if !fn(key) {
-			break
-		}
-	}
+	return snapshot
 }
 
 // Returns a slice of all keys in the set.
