@@ -73,9 +73,9 @@ func Interval(ctx context.Context, interval time.Duration, f func(), immediate .
 	runTicker(ctx, first, interval, f)
 }
 
-// IntervalAt calls `f` starting at `start` time and then every `interval` until `ctx` is cancelled.
+// EveryAt calls `f` starting at `start` time and then every `interval` until `ctx` is cancelled.
 // If `start` is in the past, `f` is executed immediately.
-func IntervalAt(ctx context.Context, start time.Time, interval time.Duration, f func()) {
+func EveryAt(ctx context.Context, start time.Time, interval time.Duration, f func()) {
 	delay := time.Until(start)
 	if delay < 0 {
 		delay = 0

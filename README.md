@@ -229,7 +229,7 @@ func main() {
 	// start := control.NextDailyAt(time.Now().In(time.UTC), 3, 0, 0)
 
 	// Schedule the task to run daily starting at 'start'
-	control.IntervalAt(ctx, start, 24*time.Hour, func() {
+	control.EveryAt(ctx, start, 24*time.Hour, func() {
 		fmt.Println("Starting daily backup...")
 	})
 
@@ -238,7 +238,7 @@ func main() {
 }
 ```
 
-#### IntervalAt
+#### EveryAt
 
 Execute a task at a regular interval, starting at a specific future time.
 
@@ -257,7 +257,7 @@ func main() {
 	ctx := context.Background()
 	start := time.Now().Add(1 * time.Hour) // Start in 1 hour
 
-	control.IntervalAt(ctx, start, 30*time.Minute, func() {
+	control.EveryAt(ctx, start, 30*time.Minute, func() {
 		fmt.Println("Running task...")
 	})
 }

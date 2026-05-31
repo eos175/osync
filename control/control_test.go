@@ -81,7 +81,7 @@ func TestThrottlePanicRecovery(t *testing.T) {
 	}
 }
 
-func TestIntervalAt(t *testing.T) {
+func TestEveryAt(t *testing.T) {
 	var mu sync.Mutex
 	executionTimes := []time.Time{}
 
@@ -99,7 +99,7 @@ func TestIntervalAt(t *testing.T) {
 	interval := 50 * time.Millisecond
 	startTime := time.Now().Add(startDelay)
 
-	IntervalAt(ctx, startTime, interval, f)
+	EveryAt(ctx, startTime, interval, f)
 
 	// Wait enough time for: initial delay (100) + one interval (50) + buffer
 	time.Sleep(200 * time.Millisecond)
