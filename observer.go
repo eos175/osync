@@ -72,8 +72,9 @@ func (o *Observable[T]) Len() int {
 	return len(o.observers)
 }
 
-// Close terminates all subscriptions and cleans up the observable's resources.
-func (o *Observable[T]) Close() {
+// UnsubscribeAll terminates all current subscriptions.
+// The observable remains active and can accept new subscriptions.
+func (o *Observable[T]) UnsubscribeAll() {
 	o.mu.Lock()
 	// Atomically claim all remaining observers.
 	observersToClose := o.observers

@@ -71,7 +71,7 @@ import (
 
 func main() {
 	obs := osync.NewObservable[int](0)
-	defer obs.Close()
+	defer obs.UnsubscribeAll()
 
 	// Subscribe to changes. This returns a channel and an unsubscribe function.
 	ch, unsubscribe := obs.Subscribe()
