@@ -57,15 +57,30 @@ func (s *Map[K, T]) Clear() {
 	s.mu.Unlock()
 }
 
-// UpdateIf updates key with updateFn(current) when key exists and condition(current) is true.
-// It reports whether an update was applied.
-func (s *Map[K, T]) UpdateIf(key K, condition func(T) bool, updateFn func(T) T) bool {
+// Update atomically applies updateFn to the current value if key exists.
+// It reports whether the key existed and was updated.
+func (s *Map[K, T]) Update(key K, updateFn func(T) T) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if v, exists := s.m[key]; exists && condition(v) {
+	if v, exists := s.m[key]; exists {
 		s.m[key] = updateFn(v)
 		return true
+	}
+	return false
+}
+
+// UpdateIf updates the key if updateFn returns true alongside the new value.
+// It reports whether an update was applied.
+func (s *Map[K, T]) UpdateIf(key K, updateFn func(T) (T, bool)) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if v, exists := s.m[key]; exists {
+		if newVal, ok := updateFn(v); ok {
+			s.m[key] = newVal
+			return true
+		}
 	}
 	return false
 }
